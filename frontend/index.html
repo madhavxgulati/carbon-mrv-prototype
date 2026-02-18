@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Mini-Feluda — Local MRV UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin:0; display:flex; gap:12px; }
+    #map { height: 80vh; width: 70vw; }
+    #right { padding: 12px; width: 30vw; overflow:auto; height:100vh; box-sizing:border-box; }
+    .card { box-shadow: 0 1px 6px rgba(0,0,0,0.12); padding:10px; margin-bottom:10px; border-radius:6px; background:#fff; }
+    label { display:block; margin-top:6px; }
+    pre { background:#f7f7f7; padding:8px; border-radius:4px; overflow:auto }
+    button { padding:8px 10px; border-radius:6px; border:none; background:#6b21a8; color:white; cursor:pointer }
+    button:disabled { background:#aaa }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="right">
+    <div class="card">
+      <h3>Create farm</h3>
+      <input id="farmName" placeholder="Farm name" />
+      <div style="margin-top:8px">
+        <button id="btnSaveFarm">Save drawn polygon as farm</button>
+      </div>
+      <p style="font-size:12px;color:#666">Draw polygon using draw control on the map and save. For demo, one farm stored in localStorage.</p>
+    </div>
+
+    <div class="card">
+      <h3>Create application</h3>
+      <select id="farmSelect" style="width:100%;padding:6px;margin-bottom:8px"></select>
+      <label>Applied at <input id="appliedAt" type="datetime-local" /></label>
+      <label>Basalt mass (kg) <input id="basaltKg" type="number" value="1000" /></label>
+      <label>Particle size (mm) <input id="particleSize" type="number" value="1" step="0.1" /></label>
+      <label>Photo <input id="photo" type="file" /></label>
+      <div style="margin-top:8px">
+        <button id="btnSubmitApp">Submit Application</button>
+      </div>
+    </div>
+
+    <div class="card" id="envCard" style="display:none;">
+      <h3>Environmental snapshot</h3>
+      <div id="envHtml"></div>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <h3>MRV Result</h3>
+      <pre id="resultPre"></pre>
+      <p style="font-size:12px;color:#555">Audit hash shown above. You can include this in your pitch export.</p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <script>
+    const apiBase = 'http://localhost:8000'
+    const map = L.map('map').setView([27.0, 88.0], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+    const drawnItems = new L.FeatureGroup(); map.addLayer(drawnItems);
+    const drawControl = new L.Control.Draw({ draw: { polyline:false, rectangle:false, circle:false, circlemarker:false, marker:false }, edit:{ featureGroup: drawnItems } });
+    map.addControl(drawControl);
+
+    let lastPolygonGeoJSON = null;
+
+    map.on(L.Draw.Event.CREATED, function (e) {
+      const layer = e.layer;
+      drawnItems.clearLayers();
+      drawnItems.addLayer(layer);
+      lastPolygonGeoJSON = layer.toGeoJSON();
+      console.log('Polygon created', lastPolygonGeoJSON);
+    });
+
+    document.getElementById('btnSaveFarm').onclick = async () => {
+      if(!lastPolygonGeoJSON){ alert('Draw a polygon first'); return }
+      const name = document.getElementById('farmName').value || ''
+      const res = await fetch(apiBase + '/api/farms', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, geojson: lastPolygonGeoJSON})
+      });
+      const j = await res.json();
+      localStorage.setItem('lastFarmId', j.farm_id);
+      alert('Farm saved: ' + j.farm_id);
+      await loadFarms();
+    }
+
+    async function loadFarms(){
+      const farmSelect = document.getElementById('farmSelect');
+      farmSelect.innerHTML = '';
+      const lastFarm = localStorage.getItem('lastFarmId');
+      if(lastFarm){
+        const res = await fetch(apiBase + '/api/farms/' + lastFarm);
+        if(res.ok){
+          const f = await res.json();
+          const opt = document.createElement('option'); opt.value = f.farm_id; opt.text = f.name; farmSelect.appendChild(opt);
+        }
+      }
+    }
+
+    document.getElementById('btnSubmitApp').onclick = async ()=>{
+      const farmId = document.getElementById('farmSelect').value;
+      if(!farmId){ alert('Select a farm (create one first)'); return }
+      if(!lastPolygonGeoJSON){ alert('Draw the farm polygon first (so centroid used)'); return }
+      const appliedAt = document.getElementById('appliedAt').value || new Date().toISOString();
+      const basaltKg = parseFloat(document.getElementById('basaltKg').value || '0')
+      const particleSize = parseFloat(document.getElementById('particleSize').value || '1')
+      const photoInput = document.getElementById('photo')
+      const form = new FormData();
+      form.append('farm_id', farmId);
+      form.append('applied_at', new Date(appliedAt).toISOString());
+      form.append('basalt_mass_kg', basaltKg);
+      form.append('particle_size_mm', particleSize);
+      const center = drawnItems.getBounds().getCenter();
+      form.append('lat', center.lat);
+      form.append('lon', center.lng);
+      if(photoInput.files.length>0) form.append('photo', photoInput.files[0]);
+      const res = await fetch(apiBase + '/api/applications', { method: 'POST', body: form });
+      const j = await res.json();
+      console.log('app response', j);
+      // show env snapshot and result
+      if(j.result && j.result.env_snapshot){
+        document.getElementById('envCard').style.display='block';
+        document.getElementById('envHtml').innerHTML = `
+          <b>Mean temp (°C):</b> ${j.result.env_snapshot.mean_temp_c}<br/>
+          <b>Annual rainfall (mm):</b> ${j.result.env_snapshot.annual_rainfall_mm}<br/>
+          <b>Soil pH:</b> ${j.result.env_snapshot.soil_pH}<br/>
+          <b>Clay %:</b> ${j.result.env_snapshot.clay_pct}<br/>
+          <b>Slope % (proxy):</b> ${j.result.env_snapshot.slope_percent}<br/>
+        `;
+      }
+      document.getElementById('resultCard').style.display='block';
+      document.getElementById('resultPre').textContent = JSON.stringify(j.result, null, 2);
+    }
+
+    loadFarms();
+  </script>
+</body>
+</html>

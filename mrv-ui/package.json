@@ -1,0 +1,25 @@
+{
+  "name": "mrv-ui",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@turf/turf": "^6.5.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.554.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.4.7",
+    "vite": "^4.4.9"
+  }
+}

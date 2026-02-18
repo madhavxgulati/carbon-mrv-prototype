@@ -1,0 +1,37 @@
+@import "leaflet/dist/leaflet.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Small utility resets and app visuals */
+:root{
+  --bg: #0b1220;
+  --card: #0f1724;
+  --muted: #94a3b8;
+  --accent: #10b981;
+  --accent-2: #7c3aed;
+  color-scheme: dark;
+}
+
+html,body,#root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: linear-gradient(180deg,#071027 0%, #07101a 60%);
+  color: white;
+}
+
+/* small visual niceties */
+.map-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.04);
+  backdrop-filter: blur(6px);
+}
+
+/* Leaflet tweaks to ensure controls are visible on dark bg */
+.leaflet-control {
+  background: rgba(10,10,10,0.6) !important;
+  color: #fff;
+}
