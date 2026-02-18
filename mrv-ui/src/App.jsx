@@ -27,7 +27,7 @@ import area from "@turf/area";
 import { polygon as turfPolygon } from "@turf/helpers";
 
 /* ------------- EDIT THIS to point at your backend ------------- */
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "https://carbon-mrv-prototype.onrender.com";
 /* ------------------------------------------------------------- */
 
 /* Fix Leaflet default icon paths for Vite/ESM */
