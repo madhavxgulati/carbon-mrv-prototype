@@ -3,6 +3,15 @@ A FastAPI-based backend prototype for a carbon MRV (Monitoring, Reporting, Verif
 
 This system ingests farm-level data, processes environmental indicators (NDVI, weather), and exposes API endpoints for project tracking.
 
+## Live Demo
+
+Frontend:
+https://carbon-mrv-prototype-1.onrender.com/
+
+Backend API:
+https://carbon-mrv-prototype.onrender.com/docs
+
+
 Tech Stack
 - Python (FastAPI)
 - Uvicorn
